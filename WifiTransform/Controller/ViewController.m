@@ -44,7 +44,12 @@
     self.title = @"所有视频";
     self.view.backgroundColor = [UIColor whiteColor];
     NSLog(@"%@:%zd-----------",[self getIPAddress],[[[NSUserDefaults standardUserDefaults] objectForKey:@"port"] integerValue]);
-    
+    UIAlertController * alert = [[UIAlertController alloc]init];
+    alert.title = [NSString stringWithFormat:@"IP:%@:%zd域名",[self getIPAddress],[[[NSUserDefaults standardUserDefaults] objectForKey:@"port"] integerValue]];
+    UIAlertAction * retain = [UIAlertAction actionWithTitle:@"我知道了" style:UIAlertActionStyleDefault handler:nil];
+    [alert addAction:retain];
+    [self presentViewController:alert animated:YES completion:nil];
+
     NSArray *documentPaths=NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSLog(@"%@---documentpath",documentPaths.lastObject);
     NSString *documentDir= [documentPaths objectAtIndex:0];
