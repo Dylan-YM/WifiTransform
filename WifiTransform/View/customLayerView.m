@@ -312,10 +312,11 @@
     NSLog(@"%@",path);
     //        NSURL *url = [NSURL URLWithString:path];
     NSURL * url = [NSURL fileURLWithPath:path];
-    //            AVAsset *asset = [AVAsset assetWithURL:url];
-    //    NSLog(@"%lld-time---",asset.duration.value /asset.duration.timescale );
+    AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:url options:nil];
+//                AVAsset *asset = [AVAsset assetWithURL:url];
+//        NSLog(@"%lld-time---",asset.duration.value /asset.duration.timescale );
     
-    self.playerItem = [AVPlayerItem playerItemWithURL:url];
+    self.playerItem = [AVPlayerItem playerItemWithAsset:asset];
     [self.player replaceCurrentItemWithPlayerItem:self.playerItem];
     //    self.backImageView.frame = CGRectMake(0, 100, 375, 400);
     [self btnClickWithPlayAndPause];

@@ -7,23 +7,18 @@
 //
 
 #import "ViewController.h"
-#import "HTTPServer.h"
-#import "DDLog.h"
-#import "DDTTYLogger.h"
 #import "MyHTTPConnection.h"
-#import "YMIPHepler.h"
 #import "playController.h"
-
-#import <ifaddrs.h>
-#import <arpa/inet.h>
 #import "VideoTableViewCell.h"
-
+#import "ViewModel.h"
 #import <AVFoundation/AVFoundation.h>
+#import "KxMovieViewController.h"
 @interface ViewController ()<UITableViewDelegate,UITableViewDataSource>
 @property (nonatomic, strong) UITableView * mainTableView;
 @property (nonatomic, strong) NSArray * fileList;
 @property (nonatomic, strong) NSMutableDictionary * dict;
 @property (nonatomic, strong) NSMutableArray * dataInfo;
+@property (nonatomic, strong) ViewModel * viewModel;
 @end
 
 @implementation ViewController{
@@ -43,47 +38,18 @@
     
     self.title = @"所有视频";
     self.view.backgroundColor = [UIColor whiteColor];
-    NSLog(@"%@:%zd-----------",[self getIPAddress],[[[NSUserDefaults standardUserDefaults] objectForKey:@"port"] integerValue]);
+    self.viewModel = [ViewModel ShareInstance];
+    
+    NSLog(@"%@:%zd-----------",[self.viewModel getIPAddress],[[[NSUserDefaults standardUserDefaults] objectForKey:@"port"] integerValue]);
     UIAlertController * alert = [[UIAlertController alloc]init];
-    alert.title = [NSString stringWithFormat:@"IP:%@:%zd域名",[self getIPAddress],[[[NSUserDefaults standardUserDefaults] objectForKey:@"port"] integerValue]];
+    alert.title = [NSString stringWithFormat:@"IP:%@:%zd域名",[self.viewModel getIPAddress],[[[NSUserDefaults standardUserDefaults] objectForKey:@"port"] integerValue]];
     UIAlertAction * retain = [UIAlertAction actionWithTitle:@"我知道了" style:UIAlertActionStyleDefault handler:nil];
     [alert addAction:retain];
     [self presentViewController:alert animated:YES completion:nil];
 
-    NSArray *documentPaths=NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSLog(@"%@---documentpath",documentPaths.lastObject);
-    NSString *documentDir= [documentPaths objectAtIndex:0];
-    
-    NSError *error=nil;
-    
-    NSArray *fileList= [[NSArray alloc] init];
-    
-    //fileList便是包含有该文件夹下所有文件的文件名及文件夹名的数组
-    fileList= [  [NSFileManager defaultManager] contentsOfDirectoryAtPath:documentDir error:&error];
-    //    以下这段代码则可以列出给定一个文件夹里的所有子文件夹名
-    NSMutableArray *dirArray= [[NSMutableArray alloc] init];
-    BOOL isDir=NO;
-    //在上面那段程序中获得的fileList中列出文件夹名
-    for (NSString *file in fileList) {
-        
-        NSString *path= [documentDir stringByAppendingPathComponent:file];
-        
-        [[NSFileManager  defaultManager] fileExistsAtPath:path isDirectory:(&isDir)];
-        
-        if (isDir) {
-            
-            [dirArray addObject:file];
-            
-        }
-        isDir=NO;
-    }
-    self.fileList = fileList;
+    self.fileList = [self.viewModel getVideoList];
     self.dict = [self getFileDetail];
-    
     [self setupUI];
-    NSLog(@"Every Thing in the dir:%@",fileList);
-    NSLog(@"All folders:%@",dirArray);
-    
 }
 - (void)setupUI{
     
@@ -123,43 +89,27 @@
     return  100;
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath{
-    NSString * fileName = self.fileList[indexPath.row];
-    playController * vc = [[playController alloc]init];
-    vc.videoInfoArr = self.dataInfo;
-    vc.videoName = fileName;
-    vc.fileList = self.fileList;
-    vc.videoInfo = self.dataInfo[indexPath.row];
-    [self.navigationController pushViewController:vc animated:YES];
-}
-
-
-// Get IP Address
-- (NSString *)getIPAddress {
-    NSString *address = @"error";
-    struct ifaddrs *interfaces = NULL;
-    struct ifaddrs *temp_addr = NULL;
-    int success = 0;
-    // retrieve the current interfaces - returns 0 on success
-    success = getifaddrs(&interfaces);
-    if (success == 0) {
-        // Loop through linked list of interfaces
-        temp_addr = interfaces;
-        while(temp_addr != NULL) {
-            if(temp_addr->ifa_addr->sa_family == AF_INET) {
-                // Check if interface is en0 which is the wifi connection on the iPhone
-                if([[NSString stringWithUTF8String:temp_addr->ifa_name] isEqualToString:@"en0"]) {
-                    // Get NSString from C String
-                    address = [NSString stringWithUTF8String:inet_ntoa(((struct sockaddr_in *)temp_addr->ifa_addr)->sin_addr)];
-                }
-            }
-            temp_addr = temp_addr->ifa_next;
-        }
-    }
-    // Free memory
-    freeifaddrs(interfaces);
-    return address;
+    NSString *path;
+    NSMutableDictionary *parameters = [NSMutableDictionary dictionary];
     
-}
+   path = self.fileList[indexPath.row];
+    // increase buffering for .wmv, it solves problem with delaying audio frames
+    if ([path.pathExtension isEqualToString:@"wmv"])
+        parameters[KxMovieParameterMinBufferedDuration] = @(5.0);
+    
+    // disable deinterlacing for iPhone, because it's complex operation can cause stuttering
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone)
+        parameters[KxMovieParameterDisableDeinterlacing] = @(YES);
+    
+    // disable buffering
+    //parameters[KxMovieParameterMinBufferedDuration] = @(0.0f);
+    //parameters[KxMovieParameterMaxBufferedDuration] = @(0.0f);
+    
+    KxMovieViewController *vc = [KxMovieViewController movieViewControllerWithContentPath:path
+                                                                               parameters:parameters];
+    [self presentViewController:vc animated:YES completion:nil];}
+
+
 - (BOOL)prefersStatusBarHidden{
     
     return  YES;
@@ -167,20 +117,25 @@
 
 - (NSMutableDictionary *)getFileDetail{
     NSMutableDictionary * videoInfo = [[NSMutableDictionary alloc]init];
-    NSString *documentPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).lastObject;
     //    NSString * fileName = self.fileList[1];
     for (NSString * fileName in self.fileList) {
-        NSString * path =  [NSString stringWithFormat:@"%@/%@",documentPaths,fileName];
-        NSInteger   fileSize = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil].fileSize;
+        NSInteger  fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:fileName error:nil] fileSize];
         NSLog(@"-----------%zd",fileSize );
-        
-        NSURL * url = [NSURL fileURLWithPath:path];
-        
-        AVAsset * asset = [AVAsset assetWithURL:url];
-        
-        [videoInfo setValue:fileName forKey:@"fileName"];
+        NSURL * url = [NSURL fileURLWithPath:fileName];
+//        AVAsset * asset = [AVAsset assetWithURL:url];
+        AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:url options:nil];
+        [videoInfo setValue:fileName.lastPathComponent forKey:@"fileName"];
         [videoInfo setValue:@(asset.duration.value/asset.duration.timescale) forKey:@"FileTime"];
         [videoInfo setValue:@(fileSize) forKey:@"fileSize"];
+        AVAssetImageGenerator *gen = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+        gen.appliesPreferredTrackTransform = YES;
+        CMTime time = CMTimeMakeWithSeconds(0.0, 600);
+        NSError *error = nil;
+        CMTime actualTime;
+        CGImageRef image = [gen copyCGImageAtTime:time actualTime:&actualTime error:&error];
+        UIImage *thumb = [[UIImage alloc] initWithCGImage:image];
+        CGImageRelease(image);
+        [videoInfo setValue:thumb forKey:@"icon"];
         
     }
     return  videoInfo;
@@ -189,22 +144,27 @@
 - (NSMutableArray *)dataInfo{
     if (!_dataInfo) {
         _dataInfo = [[NSMutableArray alloc]init];
-        
-        NSString *documentPaths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).lastObject;
         for (NSString * fileName in self.fileList) {
             NSMutableDictionary * videoInfo = [[NSMutableDictionary alloc]init];
-            NSString * path =  [NSString stringWithFormat:@"%@/%@",documentPaths,fileName];
-            NSInteger   fileSize = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:nil].fileSize;
+            NSInteger  fileSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:fileName error:nil] fileSize];
             NSLog(@"-----------%zd",fileSize );
-            
-            NSURL * url = [NSURL fileURLWithPath:path];
-            
-            AVAsset * asset = [AVAsset assetWithURL:url];
-            
-            [videoInfo setValue:fileName forKey:@"fileName"];
+            NSURL * url = [NSURL fileURLWithPath:fileName];
+            AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:url options:nil];
+              [videoInfo setValue:fileName.lastPathComponent forKey:@"fileName"];
             [videoInfo setValue:@(asset.duration.value/asset.duration.timescale) forKey:@"FileTime"];
             [videoInfo setValue:@(fileSize) forKey:@"fileSize"];
+            AVAssetImageGenerator *gen = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+            gen.appliesPreferredTrackTransform = YES;
+            CMTime time = CMTimeMakeWithSeconds(0.0, 600);
+            NSError *error = nil;
+            CMTime actualTime;
+            CGImageRef image = [gen copyCGImageAtTime:time actualTime:&actualTime error:&error];
+            UIImage *thumb = [[UIImage alloc] initWithCGImage:image];
+            CGImageRelease(image);
+            [videoInfo setValue:thumb forKey:@"icon"];
             [_dataInfo addObject:videoInfo];
+          
+            
         }
     }
     return _dataInfo;

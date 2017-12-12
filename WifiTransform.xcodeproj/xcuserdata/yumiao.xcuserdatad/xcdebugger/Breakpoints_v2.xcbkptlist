@@ -4,13 +4,19 @@
    version = "2.0">
    <Breakpoints>
       <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.ExceptionBreakpoint">
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            scope = "1"
-            stopOnStyle = "0">
+            filePath = "WifiTransform/ThirdPart/kxmovie/KxMovieViewController.m"
+            timestampString = "534762684.322473"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "1365"
+            endingLineNumber = "1365"
+            landmarkName = "-fullscreenMode:"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -19,13 +25,13 @@
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "WifiTransform/customLayerView.m"
-            timestampString = "518930110.680651"
+            filePath = "WifiTransform/ThirdPart/kxmovie/KxMovieViewController.m"
+            timestampString = "534762715.519626"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "99"
-            endingLineNumber = "99"
-            landmarkName = "-setupImageView"
+            startingLineNumber = "468"
+            endingLineNumber = "468"
+            landmarkName = "-applicationWillResignActive:"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
